@@ -4,13 +4,16 @@ import com.sai.config.CustomeUserServiceImplementation;
 import com.sai.config.JwtProvider;
 import com.sai.dto.AuthResponse;
 import com.sai.dto.LoginRequest;
-import com.sai.dto.UserRequest;
-import com.sai.exception.EmailDepulationException;
 import com.sai.exception.UserException;
+import com.sai.modal.TwoFactorOTP;
 import com.sai.modal.User;
 import com.sai.repository.UserRepository;
-import com.sai.service.UserServiceimpl;
-import lombok.AllArgsConstructor;
+import com.sai.service.EmailService;
+import com.sai.service.TwoFactorOtpService;
+import com.sai.service.UserServiceImpl;
+import com.sai.util.OtpUtils;
+import jakarta.mail.MessagingException;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -19,20 +22,24 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/auth")
-@AllArgsConstructor
+@RequiredArgsConstructor
 public class AuthController {
 
-    private UserRepository userRepository;
-    private CustomeUserServiceImplementation customUserDetails;
-    private PasswordEncoder passwordEncoder;
-    private UserServiceimpl userService;
+    private final  UserRepository userRepository;
+    private  final CustomeUserServiceImplementation customUserDetails;
+
+    private  final PasswordEncoder passwordEncoder;
+
+    private final UserServiceImpl userService;
+
+    private  final EmailService emailService;
+
+
+    private final TwoFactorOtpService twoFactorOtpService;
     @PostMapping("/signup")
     public ResponseEntity<AuthResponse> createUserHandler(
             @RequestBody User user) throws UserException {
@@ -59,7 +66,7 @@ public class AuthController {
 
         User savedUser = userRepository.save(createdUser);
 
-       // watchlistService.createWatchList(savedUser);
+       //  watchlistService.createWatchList(savedUser);
 //		walletService.createWallet(user);
 
 
@@ -76,7 +83,7 @@ public class AuthController {
 
     }
     @PostMapping("/signin")
-    public ResponseEntity<AuthResponse> signing(@RequestBody LoginRequest loginRequest) throws UserException {
+    public ResponseEntity<AuthResponse> signing(@RequestBody LoginRequest loginRequest) throws UserException, MessagingException {
 
         String username = loginRequest.getEmail();
         String password = loginRequest.getPassword();
@@ -91,26 +98,26 @@ public class AuthController {
 
         String token = JwtProvider.generateToken(authentication);
 
-//        if(user.getTwoFactorAuth().isEnabled()){
-//            AuthResponse authResponse = new AuthResponse();
-//            authResponse.setMessage("Two factor authentication enabled");
-//            authResponse.setTwoFactorAuthEnabled(true);
-//
-//            String otp= OtpUtils.generateOTP();
-//
-//            TwoFactorOTP oldTwoFactorOTP=twoFactorOtpService.findByUser(user.getId());
-//            if(oldTwoFactorOTP!=null){
-//                twoFactorOtpService.deleteTwoFactorOtp(oldTwoFactorOTP);
-//            }
-//
-//
-//            TwoFactorOTP twoFactorOTP=twoFactorOtpService.createTwoFactorOtp(user,otp,token);
-//
-//            emailService.sendVerificationOtpEmail(user.getEmail(),otp);
-//
-//            authResponse.setSession(twoFactorOTP.getId());
-//            return new ResponseEntity<>(authResponse, HttpStatus.OK);
-//        }
+        if(user.getTwoFactorAuth().isEnabled()){
+            AuthResponse authResponse = new AuthResponse();
+            authResponse.setMessage("Two factor authentication enabled");
+            authResponse.setTwoFactorAuthEnabled(true);
+
+            String otp= OtpUtils.generateOtp();
+
+            TwoFactorOTP oldTwoFactorOTP=twoFactorOtpService.findByUser(user.getId());
+            if(oldTwoFactorOTP!=null){
+                twoFactorOtpService.deleteTwoFactorOtp(oldTwoFactorOTP);
+            }
+
+
+            TwoFactorOTP twoFactorOTP=twoFactorOtpService.createTwoFactorOtp(user,otp,token);
+
+            emailService.sendverificationOtpEmail(user.getEmail(),otp);
+
+            authResponse.setSession(twoFactorOTP.getId());
+            return new ResponseEntity<>(authResponse, HttpStatus.OK);
+        }
 
         AuthResponse authResponse = new AuthResponse();
 
@@ -136,7 +143,19 @@ public class AuthController {
         return new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
     }
 
+public ResponseEntity<AuthResponse> verifySignOtp(@PathVariable String otp,@RequestParam String id) throws Exception {
 
+    TwoFactorOTP twoFactorOTP = twoFactorOtpService.findById(id);
+
+    if(twoFactorOtpService.verifyTwoFactorOtp(twoFactorOTP,otp)){
+        AuthResponse response= new AuthResponse();
+        response.setMessage("two factor authentication verified");
+        response.setTwoFactorAuthEnabled(true);
+        response.setJwt(twoFactorOTP.getJwt());
+        return new ResponseEntity<>(response,HttpStatus.OK);
+    }
+    throw new Exception("invalid otp");
+}
 
 
 }

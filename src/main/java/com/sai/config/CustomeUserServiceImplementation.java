@@ -2,6 +2,7 @@ package com.sai.config;
 
 import com.sai.modal.User;
 import com.sai.repository.UserRepository;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
@@ -14,7 +15,7 @@ import java.util.List;
 @Service
 public class CustomeUserServiceImplementation implements UserDetailsService {
 
-
+   @Autowired
     private UserRepository userRepository;
 
     public CustomeUserServiceImplementation(UserRepository userRepository) {
