@@ -18,6 +18,7 @@ import com.sai.util.OtpUtils;
 import jakarta.mail.MessagingException;
 import lombok.AllArgsConstructor;
 import lombok.NoArgsConstructor;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Repository;
@@ -26,15 +27,14 @@ import org.springframework.web.bind.annotation.*;
 import java.util.UUID;
 
 @RestController
-@AllArgsConstructor
-@NoArgsConstructor
+@RequiredArgsConstructor
 @RequestMapping("/api")
 public class UserController {
 
-    private UserService userService;
-    private VerficationService verficationService;
-    private EmailService emailService;
-    private ForgotPasswordService forgotPasaswordService;
+    private final  UserService userService;
+    private  final VerficationService verficationService;
+    private  final EmailService emailService;
+    private  final ForgotPasswordService forgotPasaswordService;
 
 
     @GetMapping("/users/profile")
